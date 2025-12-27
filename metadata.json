@@ -1,0 +1,5 @@
+{
+  "name": "AI Presentation & Document Generator",
+  "description": "Generate professional PowerPoint presentations and Word documents instantly using Gemini AI. Choose your tone, language, and length to create high-quality content.",
+  "requestFramePermissions": []
+}
