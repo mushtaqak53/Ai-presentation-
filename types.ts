@@ -16,6 +16,22 @@ export enum Language {
   URDU = 'Urdu'
 }
 
+export interface ThemePalette {
+  id: string;
+  name: string;
+  primary: string; // Hex without # for PPTX
+  dark: string;
+  light: string;
+  accent: string;
+  bgGradient: string; // CSS gradient for preview
+}
+
+export interface ThemeFont {
+  id: string;
+  name: string;
+  family: string;
+}
+
 export interface SlideContent {
   title: string;
   points: string[];

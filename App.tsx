@@ -1,9 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   FileText, 
   Presentation, 
-  Layout, 
   Download, 
   Sparkles, 
   Loader2, 
@@ -13,12 +12,57 @@ import {
   Monitor,
   Type as TypeIcon,
   ChevronLeft,
-  Columns,
-  Maximize2
+  Palette,
+  Check
 } from 'lucide-react';
-import { OutputType, Tone, Language, GeneratedData, SlideContent, DocumentSection } from './types';
+import { OutputType, Tone, Language, GeneratedData, SlideContent, DocumentSection, ThemePalette, ThemeFont } from './types';
 import { generateAILogic } from './geminiService';
 import { downloadPPTX, downloadDOCX } from './fileService';
+
+const THEMES: ThemePalette[] = [
+  {
+    id: 'indigo',
+    name: 'Modern Indigo',
+    primary: '4F46E5',
+    dark: '1E1B4B',
+    light: 'F8FAFC',
+    accent: '818CF8',
+    bgGradient: 'from-indigo-800 via-indigo-600 to-purple-800'
+  },
+  {
+    id: 'emerald',
+    name: 'Professional Emerald',
+    primary: '10B981',
+    dark: '064E3B',
+    light: 'F0FDF4',
+    accent: '34D399',
+    bgGradient: 'from-emerald-800 via-emerald-600 to-teal-800'
+  },
+  {
+    id: 'ruby',
+    name: 'Corporate Ruby',
+    primary: 'E11D48',
+    dark: '4C0519',
+    light: 'FFF1F2',
+    accent: 'FB7185',
+    bgGradient: 'from-rose-800 via-rose-600 to-pink-800'
+  },
+  {
+    id: 'amber',
+    name: 'Sunset Business',
+    primary: 'F59E0B',
+    dark: '451A03',
+    light: 'FFFBEB',
+    accent: 'FBBF24',
+    bgGradient: 'from-amber-800 via-amber-600 to-orange-800'
+  }
+];
+
+const FONTS: ThemeFont[] = [
+  { id: 'sans', name: 'Modern Sans', family: 'Arial' },
+  { id: 'serif', name: 'Classic Serif', family: 'Georgia' },
+  { id: 'mono', name: 'Technical Mono', family: 'Courier New' }
+];
 
 const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -32,6 +76,10 @@ const App: React.FC = () => {
   const [tone, setTone] = useState<Tone>(Tone.PROFESSIONAL);
   const [count, setCount] = useState(5);
   const [language, setLanguage] = useState<Language>(Language.ENGLISH);
+  
+  // Theme states
+  const [selectedPalette, setSelectedPalette] = useState<ThemePalette>(THEMES[0]);
+  const [selectedFont, setSelectedFont] = useState<ThemeFont>(FONTS[0]);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -54,7 +102,7 @@ const App: React.FC = () => {
       setGeneratedData(result);
     } catch (err: any) {
       console.error(err);
-      setError("Failed to generate content. Please check your API key and try again.");
+      setError("Failed to generate content. Please check your API key.");
     } finally {
       setLoading(false);
     }
@@ -63,20 +111,18 @@ const App: React.FC = () => {
   const handleDownload = () => {
     if (!generatedData) return;
     if (generatedData.type === OutputType.SLIDES) {
-      downloadPPTX(generatedData);
+      downloadPPTX(generatedData, selectedPalette, selectedFont);
     } else {
-      downloadDOCX(generatedData);
+      downloadDOCX(generatedData, selectedPalette, selectedFont);
     }
   };
 
-  // Helper to get total count for navigation
   const totalItems = generatedData ? generatedData.items.length + (generatedData.type === OutputType.SLIDES ? 1 : 0) : 0;
-
   const goToNext = () => setActiveSlideIndex(prev => Math.min(prev + 1, totalItems - 1));
   const goToPrev = () => setActiveSlideIndex(prev => Math.max(prev - 1, 0));
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
+    <div className="min-h-screen flex flex-col bg-slate-50" style={{ fontFamily: selectedFont.family }}>
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -88,27 +134,22 @@ const App: React.FC = () => {
               DocuGenius <span className="text-indigo-600">AI</span>
             </span>
           </div>
-          <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-500">
-            <a href="#" className="hover:text-indigo-600 transition-colors">Workspace</a>
-            <a href="#" className="hover:text-indigo-600 transition-colors">Library</a>
-            <a href="#" className="hover:text-indigo-600 transition-colors">Team</a>
+          <div className="hidden md:flex items-center gap-6">
             <div className="h-4 w-px bg-slate-200" />
-            <button className="px-5 py-2 rounded-full border border-slate-200 text-slate-700 hover:bg-slate-50 transition-all font-medium">
-              Sign In
+            <button className="px-5 py-2 rounded-full border border-slate-200 text-slate-700 hover:bg-slate-50 transition-all font-medium text-sm">
+              Upgrade Pro
             </button>
-          </nav>
+          </div>
         </div>
       </header>
 
       <main className="flex-1 max-w-[1600px] mx-auto w-full px-6 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Configuration Panel */}
-        <div className="lg:col-span-4 xl:col-span-3 space-y-6 lg:sticky lg:top-24">
+        <div className="lg:col-span-4 xl:col-span-3 space-y-6 lg:sticky lg:top-24 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pr-1">
           <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-            
             <h2 className="text-lg font-bold mb-6 flex items-center gap-2 text-slate-800 relative">
               <Settings2 className="w-5 h-5 text-indigo-500" />
-              Design Specs
+              Content Config
             </h2>
 
             <div className="space-y-5 relative">
@@ -148,11 +189,10 @@ const App: React.FC = () => {
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="Describe your vision..."
-                  className="w-full h-32 p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all resize-none text-slate-800 placeholder:text-slate-400 font-medium"
+                  className="w-full h-24 p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all resize-none text-slate-800 placeholder:text-slate-400 font-medium"
                 />
               </div>
 
-              {/* Grid of options */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
@@ -161,27 +201,25 @@ const App: React.FC = () => {
                   <select
                     value={tone}
                     onChange={(e) => setTone(e.target.value as Tone)}
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none cursor-pointer focus:ring-4 focus:ring-indigo-500/10 transition-all text-slate-700 font-medium appearance-none"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-700 font-medium"
                   >
                     {Object.values(Tone).map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 <div className="space-y-2">
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest">
-                    {type === OutputType.SLIDES ? 'Length' : 'Pages'}
+                    {type === OutputType.SLIDES ? 'Slides' : 'Sections'}
                   </label>
                   <input
                     type="number"
-                    min="1"
-                    max="15"
+                    min="1" max="15"
                     value={count}
                     onChange={(e) => setCount(parseInt(e.target.value))}
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all text-slate-700 font-medium"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-700 font-medium"
                   />
                 </div>
               </div>
 
-              {/* Language */}
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                   <Globe className="w-3.5 h-3.5" /> Language
@@ -189,15 +227,15 @@ const App: React.FC = () => {
                 <select
                   value={language}
                   onChange={(e) => setLanguage(e.target.value as Language)}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none cursor-pointer focus:ring-4 focus:ring-indigo-500/10 transition-all text-slate-700 font-medium appearance-none"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-700 font-medium"
                 >
                   {Object.values(Language).map(l => <option key={l} value={l}>{l}</option>)}
                 </select>
               </div>
 
               {error && (
-                <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl text-xs font-bold flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                <div className="p-3 bg-red-50 border border-red-100 text-red-600 rounded-xl text-[10px] font-bold flex items-center gap-2">
+                  <div className="w-1 h-1 rounded-full bg-red-500" />
                   {error}
                 </div>
               )}
@@ -205,20 +243,63 @@ const App: React.FC = () => {
               <button
                 onClick={handleGenerate}
                 disabled={loading}
-                className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-xl shadow-slate-200 hover:bg-slate-800 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
               >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Drafting AI Content...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-5 h-5" />
-                    Create with DocuGenius
-                  </>
-                )}
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                {loading ? "Generating..." : "Create Content"}
               </button>
+            </div>
+          </div>
+
+          {/* Theme & Styling Panel */}
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+            <h2 className="text-lg font-bold mb-6 flex items-center gap-2 text-slate-800">
+              <Palette className="w-5 h-5 text-purple-500" />
+              Theme Engine
+            </h2>
+            
+            <div className="space-y-6">
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Color Palette</label>
+                <div className="grid grid-cols-2 gap-3">
+                  {THEMES.map((theme) => (
+                    <button
+                      key={theme.id}
+                      onClick={() => setSelectedPalette(theme)}
+                      className={`relative p-3 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${
+                        selectedPalette.id === theme.id ? 'border-indigo-600 bg-indigo-50/50 shadow-sm' : 'border-slate-100 hover:border-slate-200'
+                      }`}
+                    >
+                      <div className={`w-full h-8 rounded-lg bg-gradient-to-r ${theme.bgGradient}`} />
+                      <span className="text-[10px] font-bold text-slate-600 truncate w-full text-center">{theme.name}</span>
+                      {selectedPalette.id === theme.id && (
+                        <div className="absolute top-1 right-1 bg-indigo-600 text-white p-0.5 rounded-full">
+                          <Check className="w-2.5 h-2.5" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Typography</label>
+                <div className="flex flex-col gap-2">
+                  {FONTS.map((font) => (
+                    <button
+                      key={font.id}
+                      onClick={() => setSelectedFont(font)}
+                      className={`p-3 rounded-xl border flex items-center justify-between transition-all ${
+                        selectedFont.id === font.id ? 'border-indigo-600 bg-indigo-50/50' : 'border-slate-100 hover:border-slate-200'
+                      }`}
+                      style={{ fontFamily: font.family }}
+                    >
+                      <span className="text-sm font-semibold text-slate-700">{font.name}</span>
+                      {selectedFont.id === font.id && <Check className="w-4 h-4 text-indigo-600" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -242,67 +323,57 @@ const App: React.FC = () => {
               </div>
 
               {generatedData && (
-                <div className="flex items-center gap-2">
-                   <button
-                    onClick={handleDownload}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-500/20 active:scale-95 group"
-                  >
-                    <Download className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform" />
-                    Export {type === OutputType.SLIDES ? 'PPTX' : 'DOCX'}
-                  </button>
-                </div>
+                <button
+                  onClick={handleDownload}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-500 transition-all shadow-lg active:scale-95 group"
+                >
+                  <Download className="w-4 h-4" />
+                  Export {type === OutputType.SLIDES ? 'PPTX' : 'DOCX'}
+                </button>
               )}
             </div>
 
             {/* Canvas Body */}
             <div className="flex flex-1 overflow-hidden">
               
-              {/* Slide Thumbnails (Sidebar) - Only for Slides */}
               {generatedData && type === OutputType.SLIDES && (
                 <div className="w-48 bg-slate-950/50 border-r border-slate-800 p-4 overflow-y-auto space-y-4 custom-scrollbar">
-                  {/* Title Slide Thumbnail */}
                   <div 
                     onClick={() => setActiveSlideIndex(0)}
-                    className={`aspect-video rounded-lg cursor-pointer transition-all border-2 overflow-hidden flex flex-col p-1.5 bg-gradient-to-br from-indigo-900 to-purple-900 ${
-                      activeSlideIndex === 0 ? 'border-indigo-500 ring-2 ring-indigo-500/20 shadow-lg' : 'border-slate-800 hover:border-slate-600 opacity-60'
+                    className={`aspect-video rounded-lg cursor-pointer transition-all border-2 overflow-hidden flex flex-col p-1.5 bg-gradient-to-br ${selectedPalette.bgGradient} ${
+                      activeSlideIndex === 0 ? 'border-white ring-2 ring-white/20' : 'border-slate-800 opacity-60'
                     }`}
                   >
-                    <div className="w-full h-1 bg-white/20 rounded mb-1" />
-                    <div className="text-[6px] text-white/50 leading-tight font-bold line-clamp-2 uppercase">{generatedData.title}</div>
+                    <div className="text-[5px] text-white/50 leading-tight font-bold line-clamp-2 uppercase">{generatedData.title}</div>
                   </div>
                   
-                  {/* Content Slides Thumbnails */}
                   {generatedData.items.map((_, i) => (
                     <div 
                       key={i}
                       onClick={() => setActiveSlideIndex(i + 1)}
                       className={`aspect-video rounded-lg cursor-pointer transition-all border-2 flex flex-col p-2 bg-slate-800 ${
-                        activeSlideIndex === i + 1 ? 'border-indigo-500 ring-2 ring-indigo-500/20 shadow-lg' : 'border-slate-800 hover:border-slate-600 opacity-60'
+                        activeSlideIndex === i + 1 ? `border-[#${selectedPalette.primary}] ring-2 ring-[#${selectedPalette.primary}]/20` : 'border-slate-800 opacity-60'
                       }`}
                     >
                       <div className="w-6 h-0.5 bg-slate-600 rounded mb-1" />
                       <div className="space-y-0.5">
                         <div className="w-full h-0.5 bg-slate-700" />
                         <div className="w-3/4 h-0.5 bg-slate-700" />
-                        <div className="w-1/2 h-0.5 bg-slate-700" />
                       </div>
                     </div>
                   ))}
                 </div>
               )}
 
-              {/* Main Preview Area */}
               <div className="flex-1 overflow-y-auto p-8 flex flex-col items-center bg-slate-950/30 custom-scrollbar relative">
-                
                 {!generatedData && !loading && (
                   <div className="flex-1 flex flex-col items-center justify-center text-slate-500 text-center space-y-6">
-                    <div className="w-32 h-32 bg-slate-900 rounded-[40px] flex items-center justify-center border border-slate-800 shadow-2xl relative group">
-                       <div className="absolute inset-0 bg-indigo-500/10 rounded-[40px] blur-2xl group-hover:bg-indigo-500/20 transition-all" />
+                    <div className="w-32 h-32 bg-slate-900 rounded-[40px] flex items-center justify-center border border-slate-800 shadow-2xl">
                       {type === OutputType.SLIDES ? <Presentation className="w-16 h-16 text-indigo-400" /> : <FileText className="w-16 h-16 text-indigo-400" />}
                     </div>
                     <div className="max-w-xs">
-                      <h3 className="text-white font-bold text-xl mb-2">Ready to Create</h3>
-                      <p className="text-sm text-slate-400 leading-relaxed">Enter your instructions on the left to generate your {type === OutputType.SLIDES ? 'slide deck' : 'document'} with AI precision.</p>
+                      <h3 className="text-white font-bold text-xl mb-2">Ready to Design</h3>
+                      <p className="text-sm text-slate-400">Describe your topic and pick your theme to start.</p>
                     </div>
                   </div>
                 )}
@@ -310,173 +381,91 @@ const App: React.FC = () => {
                 {loading && (
                   <div className="flex-1 flex flex-col items-center justify-center gap-8">
                     <div className="relative">
-                      <div className="w-24 h-24 border-4 border-slate-800 border-t-indigo-500 rounded-full animate-[spin_1.5s_linear_infinite]"></div>
+                      <div className="w-24 h-24 border-4 border-slate-800 border-t-indigo-500 rounded-full animate-spin"></div>
                       <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-indigo-500 w-8 h-8 animate-pulse" />
                     </div>
-                    <div className="text-center space-y-2">
-                      <p className="font-bold text-white text-2xl tracking-tight">Crafting Masterpiece...</p>
-                      <div className="flex gap-1 justify-center">
-                        <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
-                        <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                        <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
-                      </div>
-                    </div>
+                    <p className="font-bold text-white text-2xl">AI is crafting your deck...</p>
                   </div>
                 )}
 
                 {generatedData && (
                   <div className="w-full max-w-5xl animate-in fade-in duration-700">
-                    
-                    {/* Navigation Overlays (Floating) */}
-                    <div className="fixed bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-slate-900/80 backdrop-blur-xl px-4 py-2 rounded-2xl border border-slate-700/50 shadow-2xl z-20">
-                      <button 
-                        onClick={goToPrev}
-                        disabled={activeSlideIndex === 0}
-                        className="p-2 hover:bg-slate-800 rounded-xl transition-all disabled:opacity-30 text-white"
-                      >
-                        <ChevronLeft className="w-5 h-5" />
-                      </button>
-                      <div className="text-xs font-black text-slate-400 px-4 select-none tracking-widest uppercase">
-                        {activeSlideIndex + 1} / {totalItems}
-                      </div>
-                      <button 
-                        onClick={goToNext}
-                        disabled={activeSlideIndex === totalItems - 1}
-                        className="p-2 hover:bg-slate-800 rounded-xl transition-all disabled:opacity-30 text-white"
-                      >
-                        <ChevronRight className="w-5 h-5" />
-                      </button>
+                    <div className="fixed bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-slate-900/80 backdrop-blur-xl px-4 py-2 rounded-2xl border border-slate-700 shadow-2xl z-20">
+                      <button onClick={goToPrev} disabled={activeSlideIndex === 0} className="p-2 hover:bg-slate-800 rounded-xl disabled:opacity-30 text-white"><ChevronLeft className="w-5 h-5" /></button>
+                      <div className="text-xs font-black text-slate-400 px-4 select-none tracking-widest uppercase">{activeSlideIndex + 1} / {totalItems}</div>
+                      <button onClick={goToNext} disabled={activeSlideIndex === totalItems - 1} className="p-2 hover:bg-slate-800 rounded-xl disabled:opacity-30 text-white"><ChevronRight className="w-5 h-5" /></button>
                     </div>
 
-                    {/* Rendering Engine */}
                     <div className="mb-24">
                       {type === OutputType.SLIDES ? (
-                        /* Presentation Slide Engine */
-                        <div className="slide-canvas">
+                        <div className="slide-canvas transition-all duration-500" style={{ fontFamily: selectedFont.family }}>
                           {activeSlideIndex === 0 ? (
-                            /* Title Slide */
-                            <div className="aspect-video bg-gradient-to-br from-indigo-800 via-indigo-600 to-purple-800 rounded-3xl shadow-2xl flex flex-col items-center justify-center p-16 text-center text-white relative overflow-hidden border border-white/10 ring-1 ring-white/20">
-                              <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+                            <div className={`aspect-video bg-gradient-to-br ${selectedPalette.bgGradient} rounded-3xl shadow-2xl flex flex-col items-center justify-center p-16 text-center text-white relative overflow-hidden border border-white/10`}>
+                               <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none">
                                 <svg width="100%" height="100%"><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="1"/></pattern><rect width="100%" height="100%" fill="url(#grid)" /></svg>
                               </div>
-                              <div className="absolute -top-40 -right-40 w-96 h-96 bg-white/20 rounded-full blur-[120px]" />
-                              <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-indigo-500/30 rounded-full blur-[120px]" />
-                              
                               <div className="relative z-10 w-full">
-                                <div className="inline-block px-4 py-1.5 bg-white/10 border border-white/20 rounded-full text-xs font-bold tracking-[0.2em] uppercase mb-10 backdrop-blur-md">
-                                  Global Presentation Deck
+                                <div className="inline-block px-4 py-1.5 bg-white/10 border border-white/20 rounded-full text-[10px] font-bold tracking-[0.2em] uppercase mb-10 backdrop-blur-md">
+                                  {selectedPalette.name} Style
                                 </div>
-                                <h1 className="text-6xl font-black mb-8 leading-[1.05] tracking-tight text-white drop-shadow-2xl">
-                                  {generatedData.title}
-                                </h1>
-                                {generatedData.subtitle && (
-                                  <p className="text-2xl text-indigo-100 font-medium opacity-90 max-w-3xl mx-auto italic border-t border-white/10 pt-8">
-                                    {generatedData.subtitle}
-                                  </p>
-                                )}
+                                <h1 className="text-5xl font-black mb-8 leading-tight drop-shadow-xl">{generatedData.title}</h1>
+                                {generatedData.subtitle && <p className="text-xl text-white/90 font-medium italic border-t border-white/10 pt-8 max-w-2xl mx-auto">{generatedData.subtitle}</p>}
                               </div>
                             </div>
                           ) : (
-                            /* Content Slides */
-                            <div className="aspect-video bg-white rounded-3xl shadow-2xl flex flex-col p-12 text-slate-800 relative group overflow-hidden border border-slate-200">
-                              <div className="absolute top-0 left-0 w-2 h-full bg-indigo-600" />
-                              <div className="absolute top-8 right-12 text-slate-100 font-black text-8xl pointer-events-none select-none">
-                                {String(activeSlideIndex + 1).padStart(2, '0')}
-                              </div>
-                              
+                            <div className="aspect-video bg-white rounded-3xl shadow-2xl flex flex-col p-12 text-slate-800 relative overflow-hidden border border-slate-200">
+                              <div className="absolute top-0 left-0 w-2 h-full" style={{ backgroundColor: `#${selectedPalette.primary}` }} />
+                              <div className="absolute top-8 right-12 text-slate-100 font-black text-8xl pointer-events-none select-none">{String(activeSlideIndex + 1).padStart(2, '0')}</div>
                               <div className="relative z-10">
                                 <h3 className="text-4xl font-black text-slate-900 mb-12 flex items-center gap-4 border-b border-slate-100 pb-8">
-                                  <span className="flex items-center justify-center w-12 h-12 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-600/30 text-lg">
-                                    {activeSlideIndex}
-                                  </span>
+                                  <span className="flex items-center justify-center w-12 h-12 text-white rounded-2xl shadow-lg text-lg" style={{ backgroundColor: `#${selectedPalette.primary}` }}>{activeSlideIndex}</span>
                                   {(generatedData.items[activeSlideIndex - 1] as SlideContent).title}
                                 </h3>
-                                
-                                <div className="flex-1 flex flex-col justify-center">
-                                  <ul className="space-y-8">
-                                    {(generatedData.items[activeSlideIndex - 1] as SlideContent).points.map((point, pIdx) => (
-                                      <li key={pIdx} className="flex gap-6 text-2xl text-slate-600 font-medium leading-relaxed group/item transition-all hover:translate-x-2">
-                                        <div className="w-3 h-3 rounded-full bg-indigo-500 mt-3 flex-shrink-0 shadow-sm" />
-                                        <span>{point}</span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              </div>
-                              
-                              <div className="mt-auto pt-8 flex justify-between items-center text-[10px] font-black text-slate-300 tracking-widest uppercase border-t border-slate-50">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-4 h-4 bg-indigo-600 rounded-sm" />
-                                  <span>Design System v1.0</span>
-                                </div>
-                                <span>DocuGenius AI • Strategic Deck</span>
+                                <ul className="space-y-6">
+                                  {(generatedData.items[activeSlideIndex - 1] as SlideContent).points.map((point, pIdx) => (
+                                    <li key={pIdx} className="flex gap-6 text-xl text-slate-600 font-medium leading-relaxed hover:translate-x-2 transition-transform">
+                                      <div className="w-3 h-3 rounded-full mt-3 flex-shrink-0" style={{ backgroundColor: `#${selectedPalette.primary}` }} />
+                                      <span>{point}</span>
+                                    </li>
+                                  ))}
+                                </ul>
                               </div>
                             </div>
                           )}
                         </div>
                       ) : (
-                        /* Document Page Engine */
-                        <div className="document-canvas">
+                        <div className="document-canvas transition-all duration-500" style={{ fontFamily: selectedFont.family }}>
                            {activeSlideIndex === 0 ? (
-                             /* Document Front Page */
                              <div className="bg-white min-h-[900px] shadow-2xl p-24 flex flex-col border border-slate-200 relative overflow-hidden">
-                               <div className="absolute top-0 right-0 w-4 h-full bg-slate-900" />
+                               <div className="absolute top-0 right-0 w-4 h-full" style={{ backgroundColor: `#${selectedPalette.dark}` }} />
                                <div className="mb-24 flex justify-between items-start">
-                                 <div className="text-4xl font-black italic tracking-tighter text-slate-900 border-l-8 border-indigo-600 pl-6">
-                                   DG<span className="text-indigo-600">.</span>
-                                 </div>
-                                 <div className="text-right">
-                                   <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Issue Date</div>
-                                   <div className="text-sm font-bold text-slate-900">{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                                 <div className="text-4xl font-black italic tracking-tighter text-slate-900 border-l-8 pl-6" style={{ borderColor: `#${selectedPalette.primary}` }}>
+                                   DG<span style={{ color: `#${selectedPalette.primary}` }}>.</span>
                                  </div>
                                </div>
-
                                <div className="flex-1 flex flex-col justify-center">
-                                 <div className="w-24 h-1 bg-indigo-600 mb-12" />
-                                 <h1 className="text-7xl font-serif font-black text-slate-900 mb-8 leading-[1.1] max-w-3xl">
-                                   {generatedData.title}
-                                 </h1>
-                                 <div className="flex items-center gap-8 mt-12">
-                                   <div>
-                                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-2">Primary Intent</div>
-                                     <div className="text-lg font-bold text-slate-800">{tone} Strategy Report</div>
-                                   </div>
-                                   <div className="h-10 w-px bg-slate-100" />
-                                   <div>
-                                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-2">Scope</div>
-                                     <div className="text-lg font-bold text-slate-800">Generated Synthesis</div>
-                                   </div>
-                                 </div>
-                               </div>
-
-                               <div className="mt-auto border-t border-slate-100 pt-12 flex justify-between text-[10px] font-black tracking-widest text-slate-300 uppercase">
-                                 <span>INTERNAL DOCUMENTATION</span>
-                                 <span>SECURE GENESIS v2.4</span>
+                                 <div className="w-24 h-1 mb-12" style={{ backgroundColor: `#${selectedPalette.primary}` }} />
+                                 <h1 className="text-6xl font-bold text-slate-900 mb-8 leading-tight max-w-3xl">{generatedData.title}</h1>
+                                 <div className="text-lg font-bold text-slate-800">{tone} Strategy Report</div>
                                </div>
                              </div>
                            ) : (
-                             /* Document Body Section */
                              <div className="bg-white min-h-[900px] shadow-2xl p-20 flex flex-col border border-slate-200">
-                                <div className="flex justify-between items-center mb-16 text-[10px] font-black text-slate-300 tracking-widest uppercase border-b border-slate-50 pb-8">
+                                <div className="flex justify-between items-center mb-16 text-[10px] font-black text-slate-300 tracking-widest uppercase border-b pb-8">
                                   <span>{generatedData.title}</span>
                                   <span>Section {String(activeSlideIndex).padStart(2, '0')}</span>
                                 </div>
-
                                 <div className="max-w-3xl mx-auto w-full">
-                                  <h3 className="text-4xl font-serif font-bold text-indigo-900 mb-10 leading-tight">
+                                  <h3 className="text-3xl font-bold mb-10 leading-tight" style={{ color: `#${selectedPalette.dark}` }}>
                                     {(generatedData.items[activeSlideIndex - 1] as DocumentSection).heading}
                                   </h3>
                                   <div className="space-y-8">
                                     {(generatedData.items[activeSlideIndex - 1] as DocumentSection).paragraphs.map((p, pIdx) => (
-                                      <p key={pIdx} className="text-xl text-slate-700 leading-relaxed text-justify font-serif selection:bg-indigo-100">
+                                      <p key={pIdx} className="text-lg text-slate-700 leading-relaxed text-justify">
                                         {p}
                                       </p>
                                     ))}
                                   </div>
-                                </div>
-
-                                <div className="mt-auto pt-12 text-center">
-                                   <div className="text-slate-300 font-serif text-sm"> — {activeSlideIndex + 1} — </div>
                                 </div>
                              </div>
                            )}
@@ -491,23 +480,16 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* Styles */}
       <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
-        
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         @keyframes fade-in {
-          from { opacity: 0; transform: translateY(20px); }
+          from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        .animate-in {
-          animation: fade-in 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        /* Prevent ugly text selection on UI elements */
-        button, select, input { user-select: none; }
+        .animate-in { animation: fade-in 0.6s ease-out; }
       `}</style>
     </div>
   );
